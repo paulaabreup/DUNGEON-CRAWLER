@@ -1,0 +1,431 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <conio.h>
+#include <string.h>
+#include <ctype.h> 
+#include <windows.h> 
+
+#define MENU 0
+#define VILA 1
+#define FASE1 2
+#define FASE2 3
+#define FASE3 4
+#define GAMEOVER 5
+#define VITORIA 6
+
+int estado_atual = MENU;
+int vidas = 3;
+int arma_escolhida = 0;
+int tem_chave = 0;
+int px = 1, py = 1;
+char dir_jogador = '^'; 
+
+char mapa_render[25][26]; 
+int linhas_atuais, colunas_atuais;
+
+
+void reposicionar_cursor() {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    COORD pos;
+    pos.X = 0;
+    pos.Y = 0;
+    SetConsoleCursorPosition(hConsole, pos);
+}
+
+void esconder_cursor() {
+    HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO info;
+    info.dwSize = 100;
+    info.bVisible = 0; 
+    SetConsoleCursorInfo(consoleHandle, &info);
+}
+
+void mudar_cor(int cor) {
+    SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), cor);
+}
+
+
+char base_vila[10][11] = {
+    "**********",
+    "*........*",
+    "*.N......*", 
+    "*........*",
+    "*........*",
+    "***....***",
+    "*........*",
+    "*.L......*", 
+    "*........*",
+    "**********"
+};
+
+char base_fase1[10][11] = {
+    "**********",
+    "*.......@*", 
+    "********.*", 
+    "*k.......*", 
+    "*.********", 
+    "*........*", 
+    "********.*", 
+    "*L...D...*", 
+    "*........*", 
+    "**********" 
+};
+
+char base_fase2[15][16] = {
+    "***************",
+    "*.......@.....*",
+    "*.***********.*",
+    "*.D...........*",
+    "*.***********.*",
+    "*.......X...*.*",
+    "*.*********.*.*",
+    "*.#...O.....*.*", 
+    "*.*********.*.*",
+    "*.@.......D.*.*",
+    "*.*********.*.*",
+    "*.............*",
+    "*.***********.*",
+    "*.........L...*",
+    "***************"
+};
+
+char base_fase3[25][26] = {
+    "*************************",
+    "*..@....*.......*.@.....*",
+    "*******.*.*.*.*.*.*******",
+    "*.......*.*.*.*.*.......*",
+    "*.Y...*.*.*.*.*.*.....Y.*", 
+    "*.*****.***D***.*****...*",
+    "*.*.......*.*.......*...*",
+    "*******.*.Z...*.*******.*", 
+    "*.D.........D...........*",
+    "*.***.*.*******.*.*******",
+    "*...*.*.*.......*.*.....*",
+    "*.*.*.*.*.Y.....*.*.*.***",
+    "*.*.*.*.*******.*...*...*",
+    "*.*.*.*.........*.*.*...*",
+    "*.*.*.***********.*.*.*.*",
+    "*.*.*.*...........*.*.*.*",
+    "*.*.***************.*.*.*",
+    "*.*.@...............*.*.*",
+    "*.*******************.*.*",
+    "*.*.....................*",
+    "***********************.*",
+    "*.......................*",
+    "*.***********************",
+    "*L......................*",
+    "*************************"
+};
+
+void carregar_fase() {
+    int i, j; 
+    system("cls"); 
+    
+    px = 1; py = 1; tem_chave = 0; dir_jogador = '^';
+    
+    if (estado_atual == VILA) {
+        linhas_atuais = 10; colunas_atuais = 10;
+        for(i=0; i<10; i++) for(j=0; j<11; j++) mapa_render[i][j] = base_vila[i][j];
+    } else if (estado_atual == FASE1) {
+        linhas_atuais = 10; colunas_atuais = 10;
+        for(i=0; i<10; i++) for(j=0; j<11; j++) mapa_render[i][j] = base_fase1[i][j];
+    } else if (estado_atual == FASE2) {
+        linhas_atuais = 15; colunas_atuais = 15;
+        for(i=0; i<15; i++) for(j=0; j<16; j++) mapa_render[i][j] = base_fase2[i][j];
+    } else if (estado_atual == FASE3) {
+        linhas_atuais = 25; colunas_atuais = 25;
+        for(i=0; i<25; i++) for(j=0; j<26; j++) mapa_render[i][j] = base_fase3[i][j];
+    }
+    
+    for(i=0; i<linhas_atuais; i++) {
+        for(j=0; j<colunas_atuais; j++) {
+            if(mapa_render[i][j] == '.') {
+                mapa_render[i][j] = ' ';
+            }
+        }
+    }
+}
+
+void desenhar_mapa() {
+    int i, j; 
+    reposicionar_cursor(); 
+    
+    mudar_cor(7); 
+    printf("Vidas: %d | Arma: %d | Chaves: %d\n", vidas, arma_escolhida, tem_chave);
+    
+    for (i = 0; i < linhas_atuais; i++) {
+        for (j = 0; j < colunas_atuais; j++) {
+            if (i == py && j == px) {
+                mudar_cor(10); 
+                printf("%c", dir_jogador);
+            } else {
+                char c = mapa_render[i][j];
+                
+                if (c == '*') mudar_cor(8); 
+                else if (c == '@') mudar_cor(14); 
+                else if (c == 'X' || c == 'Y' || c == 'Z') mudar_cor(12); 
+                else if (c == '#') mudar_cor(4); 
+                else if (c == 'k') mudar_cor(6); 
+                else if (c == 'D' || c == '=') mudar_cor(11); 
+                else if (c == 'L') mudar_cor(13); 
+                else if (c == 'N') mudar_cor(11); 
+                else if (c == 'O') mudar_cor(9); 
+                else mudar_cor(7); 
+                
+                printf("%c", c);
+            }
+        }
+        printf("\n");
+    }
+    mudar_cor(7); 
+    printf("Aguardando comando (w, a, s, d, i, o)...     \n");
+}
+
+void mover_monstros() {
+    int i, j, r, nx, ny, dx, dy; 
+    for (i = 0; i < linhas_atuais; i++) {
+        for (j = 0; j < colunas_atuais; j++) {
+            if (mapa_render[i][j] == 'X') { 
+                r = rand() % 4;
+                nx = j; ny = i;
+                if (r == 0) ny--; else if (r == 1) ny++; else if (r == 2) nx--; else nx++;
+                
+                mapa_render[i][j] = ' '; 
+                if (ny >= 0 && ny < linhas_atuais && nx >= 0 && nx < colunas_atuais && mapa_render[ny][nx] == ' ') {
+                    mapa_render[ny][nx] = 'x'; 
+                } else {
+                    mapa_render[i][j] = 'x'; 
+                }
+            } else if (mapa_render[i][j] == 'Y') { 
+                nx = j; ny = i;
+                if (px > j) nx++; else if (px < j) nx--;
+                else if (py > i) ny++; else if (py < i) ny--;
+                
+                mapa_render[i][j] = ' ';
+                if (ny >= 0 && ny < linhas_atuais && nx >= 0 && nx < colunas_atuais && mapa_render[ny][nx] == ' ') {
+                    mapa_render[ny][nx] = 'y';
+                } else {
+                    mapa_render[i][j] = 'y';
+                }
+            } else if (mapa_render[i][j] == 'Z') {
+                dx = (px > j) ? 1 : ((px < j) ? -1 : 0);
+                dy = (py > i) ? 1 : ((py < i) ? -1 : 0);
+                
+                mapa_render[i][j] = ' ';
+                if (dx != 0 && dy != 0 && mapa_render[i+dy][j+dx] == ' ') {
+                    mapa_render[i+dy][j+dx] = 'z';
+                } else {
+                     if (dx != 0 && mapa_render[i][j+dx] == ' ') { mapa_render[i][j+dx] = 'z'; }
+                     else if (dy != 0 && mapa_render[i+dy][j] == ' ') { mapa_render[i+dy][j] = 'z'; }
+                     else { mapa_render[i][j] = 'z'; }
+                }
+            }
+        }
+    }
+    
+    for (i = 0; i < linhas_atuais; i++) {
+        for (j = 0; j < colunas_atuais; j++) {
+            if (mapa_render[i][j] == 'x') mapa_render[i][j] = 'X';
+            if (mapa_render[i][j] == 'y') mapa_render[i][j] = 'Y';
+            if (mapa_render[i][j] == 'z') mapa_render[i][j] = 'Z';
+        }
+    }
+}
+
+void checar_dano_jogador() {
+    if (mapa_render[py][px] == '#' || mapa_render[py][px] == 'X' || mapa_render[py][px] == 'Y' || mapa_render[py][px] == 'Z') {
+        vidas--;
+        if (vidas <= 0) estado_atual = GAMEOVER;
+        else carregar_fase(); 
+    }
+}
+
+void processar_acerto(int y, int x) {
+    if (y >= 0 && y < linhas_atuais && x >= 0 && x < colunas_atuais) {
+        if (mapa_render[y][x] == 'k' || mapa_render[y][x] == 'X' || mapa_render[y][x] == 'Y') {
+            mapa_render[y][x] = ' '; 
+        } else if (mapa_render[y][x] == 'Z') {
+            estado_atual = VITORIA; 
+        }
+    }
+}
+
+void realizar_ataque() {
+    int i, j, step, ty, tx;
+    int y_inicio, y_fim, x_inicio, x_fim;
+    
+    if (arma_escolhida == 0) return; 
+    
+    if (arma_escolhida == 3) { 
+        for(i = py-1; i <= py+1; i++)
+            for(j = px-1; j <= px+1; j++)
+                processar_acerto(i, j);
+    } 
+    else if (arma_escolhida == 1) { 
+        y_inicio = py; y_fim = py; x_inicio = px; x_fim = px;
+        if (dir_jogador == '^') { y_inicio = py-2; y_fim = py-1; x_inicio = px-1; x_fim = px+1; }
+        else if (dir_jogador == 'v') { y_inicio = py+1; y_fim = py+2; x_inicio = px-1; x_fim = px+1; }
+        else if (dir_jogador == '<') { y_inicio = py-1; y_fim = py+1; x_inicio = px-2; x_fim = px-1; }
+        else if (dir_jogador == '>') { y_inicio = py-1; y_fim = py+1; x_inicio = px+1; x_fim = px+2; }
+        
+        for(i = y_inicio; i <= y_fim; i++)
+            for(j = x_inicio; j <= x_fim; j++)
+                processar_acerto(i, j);
+    }
+    else if (arma_escolhida == 2) { 
+        for(step = 1; step <= 4; step++) {
+            ty = py; tx = px;
+            if (dir_jogador == '^') ty -= step;
+            else if (dir_jogador == 'v') ty += step;
+            else if (dir_jogador == '<') tx -= step;
+            else if (dir_jogador == '>') tx += step;
+            processar_acerto(ty, tx);
+        }
+    }
+}
+
+void interagir() {
+    int ix = px, iy = py;
+    char a;
+    
+    if (dir_jogador == '^') iy--; 
+    else if (dir_jogador == 'v') iy++;
+    else if (dir_jogador == '<') ix--; 
+    else if (dir_jogador == '>') ix++;
+
+    if (mapa_render[iy][ix] == '@') { 
+        tem_chave++; mapa_render[iy][ix] = ' '; 
+    } 
+    else if (mapa_render[iy][ix] == 'D' && tem_chave > 0) { 
+        tem_chave--; mapa_render[iy][ix] = '='; 
+    } 
+    else if (mapa_render[iy][ix] == 'O') { 
+        mapa_render[iy][ix] = ' ';
+        if (estado_atual == FASE2) {
+            mapa_render[7][2] = ' '; 
+        }
+    }
+    else if (mapa_render[iy][ix] == 'N') {
+        system("cls");
+        mudar_cor(11);
+        printf("--- NPC DA VILA ---\n");
+        mudar_cor(7);
+        printf("Escolha a sua arma teclando de 1 a 3:\n");
+        printf("1 - Espada (Dano em area 3x2)\n2 - Arco (Dano em linha 1x4)\n3 - Cajado (Dano em area 3x3)\nA sua escolha: ");
+        a = _getch();
+        if (a >= '1' && a <= '3') arma_escolhida = a - '0';
+        system("cls");
+    }
+}
+
+void mostrar_tutorial() {
+    system("cls");
+    mudar_cor(11);
+    printf("===============================================================\n");
+    printf("                       TUTORIAL DO JOGO                        \n");
+    printf("===============================================================\n\n");
+    
+    mudar_cor(14);
+    printf("[ HISTORIA ]\n");
+    mudar_cor(7);
+    printf("Uma perigosa anomalia espalhou-se pelo subsolo da Vila Jutaiteua,\n");
+    printf("no municipio de Moju. Armado com a tua coragem, deves descer \n");
+    printf("os 3 andares da masmorra, superar os monstros e derrotar o grande\n");
+    printf("Boss Final (Z) para salvar a comunidade local!\n\n");
+
+    mudar_cor(14);
+    printf("[ CONTROLOS ]\n");
+    mudar_cor(7);
+    printf(" W / A / S / D : Move a personagem para cima, esquerda, baixo, direita\n");
+    printf(" i : Interagir (pegar numa chave, abrir porta ou carregar num botao)\n");
+    printf("     *Atencao: Deves estar virado de frente para o objeto!*\n");
+    printf(" o : Atacar (utiliza a arma escolhida no NPC da Vila)\n\n");
+
+    mudar_cor(14);
+    printf("[ SIMBOLOS NO MAPA ]\n");
+    mudar_cor(7);
+    printf(" ^, <, v, > : A tua personagem e a direcao para onde esta a olhar\n");
+    printf(" * : Parede (bloqueia o caminho)\n");
+    printf(" # : Espinho (morte instantanea ao pisar)\n");
+    printf(" k : Caixa (pode ser destruida com um ataque)\n");
+    printf(" @ : Chave (necessaria para abrir portas fechadas)\n");
+    printf(" D : Porta fechada (abre com a chave e transforma-se num '=')\n");
+    printf(" O : Botao (carrega no 'i' de frente para ele para ativar segredos)\n");
+    printf(" L : Escada (desce para o proximo andar da masmorra)\n");
+    printf(" X : Monstro (Movimento Aleatorio)\n");
+    printf(" Y : Monstro (Persegue o jogador)\n");
+    printf(" Z : Boss Final (Persegue na diagonal, muito perigoso!)\n\n");
+
+    printf("Pressione qualquer tecla para voltar ao menu principal...");
+    _getch();
+}
+
+int main() {
+    char tecla;
+    int nx, ny;
+    srand(time(NULL));
+    
+    esconder_cursor(); 
+
+    while (1) {
+        if (estado_atual == MENU) {
+            system("cls");
+            mudar_cor(14);
+            printf("=== DUNGEON CRAWLER ===\n");
+            mudar_cor(7);
+            printf("1. Jogar\n2. Tutorial\n3. Sair\nEscolha: ");
+            tecla = _getch();
+            if (tecla == '1') { estado_atual = VILA; carregar_fase(); }
+            if (tecla == '2') { mostrar_tutorial(); }
+            if (tecla == '3') {
+                mudar_cor(10);
+                printf("\nJogo encerrado. Obrigado por jogar!\n");
+                mudar_cor(7);
+                return 0;
+            }
+        } 
+        else if (estado_atual >= VILA && estado_atual <= FASE3) {
+            desenhar_mapa();
+            
+            tecla = tolower(_getch());
+
+            nx = px; ny = py;
+            
+            if (tecla == 'w') { ny--; dir_jogador = '^'; }
+            if (tecla == 's') { ny++; dir_jogador = 'v'; }
+            if (tecla == 'a') { nx--; dir_jogador = '<'; }
+            if (tecla == 'd') { nx++; dir_jogador = '>'; }
+            
+            if (tecla == 'i') interagir();
+            if (tecla == 'o') realizar_ataque();
+
+            if (mapa_render[ny][nx] == ' ' || mapa_render[ny][nx] == '=' || mapa_render[ny][nx] == '@' || mapa_render[ny][nx] == 'O' || mapa_render[ny][nx] == 'L' || mapa_render[ny][nx] == '#' || mapa_render[ny][nx] == 'X' || mapa_render[ny][nx] == 'Y' || mapa_render[ny][nx] == 'Z') {
+                px = nx; py = ny;
+            }
+
+            if (mapa_render[py][px] == 'L') { 
+                estado_atual++; carregar_fase();
+            }
+
+            mover_monstros();
+            checar_dano_jogador();
+        }
+        else if (estado_atual == GAMEOVER) {
+            system("cls");
+            mudar_cor(12);
+            printf("\n*** GAME OVER ***\nAs tuas vidas acabaram.\n");
+            mudar_cor(7);
+            printf("Pressione algo para voltar ao menu.");
+            _getch(); vidas = 3; arma_escolhida = 0; estado_atual = MENU;
+        }
+        else if (estado_atual == VITORIA) {
+            system("cls");
+            mudar_cor(10);
+            printf("\n*** VITORIA! ***\nO grande Mal foi banido da Vila Jutaiteua e a regiao esta a salvo, ihulll parabenssssssssssssss girasssss\n");
+            mudar_cor(7);
+            _getch(); return 0;
+        }
+    }
+    return 0;
+}
